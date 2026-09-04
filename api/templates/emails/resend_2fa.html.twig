@@ -1,0 +1,16 @@
+<div style="font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f9f9f9;">
+    <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h2 style="color: #333333; margin-top: 0;">{{ 'template.resend_2fa.title'|trans({}, 'email') }}</h2>
+        <p style="color: #666666; font-size: 16px; line-height: 1.5;">
+            {{ 'template.resend_2fa.body'|trans({}, 'email') }}
+        </p>
+
+        <div style="margin: 30px 0; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #3498db; background-color: #f0f8ff; padding: 20px; border-radius: 8px;">
+            {{ auth_code }}
+        </div>
+
+        <p style="color: #999999; font-size: 12px; margin-bottom: 0;">
+            {{ 'template.resend_2fa.footer'|trans({}, 'email') }}
+        </p>
+    </div>
+</div>

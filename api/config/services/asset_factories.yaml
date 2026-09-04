@@ -1,0 +1,4 @@
+services:
+    _instanceof:
+        App\Service\Interface\AssetFactoryInterface:
+            tags: ['app.asset_factory']

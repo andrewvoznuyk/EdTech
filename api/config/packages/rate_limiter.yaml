@@ -1,0 +1,14 @@
+framework:
+    rate_limiter:
+        verification_email_limiter:
+            policy: 'fixed_window'
+            limit: 1
+            interval: '1 minute'
+        two_factor_auth:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '15 minutes'
+        two_factor_resend:
+            policy: 'fixed_window'
+            limit: 1
+            interval: '1 minute'

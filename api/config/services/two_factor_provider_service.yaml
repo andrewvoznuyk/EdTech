@@ -1,0 +1,4 @@
+services:
+    _instanceof:
+        App\Service\TwoFactor\Provider\TwoFactorProviderInterface:
+            tags: [ 'app.two_factor_provider' ]

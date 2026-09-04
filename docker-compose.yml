@@ -1,0 +1,95 @@
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
+    container_name: ${PROJECT_NAME}-api
+    volumes:
+      - ./api:/var/www/api
+      # - /var/www/api/var
+      # - vendor_data:/var/www/api/vendor
+      - public_bundles:/var/www/api/public/bundles
+    environment:
+      APP_ENV: ${APP_ENV}
+    networks:
+      - ${PROJECT_NAME}
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend/Dockerfile
+
+    command: npm run dev -- --host
+    ports:
+      - "3000:5173"
+    stdin_open: true
+    tty: true
+    container_name: ${PROJECT_NAME}-frontend
+    volumes:
+      - ${FRONTEND_DIRECTORY}:/var/www/project/frontend
+      - /var/www/project/frontend/node_modules
+    networks:
+      - ${PROJECT_NAME}
+
+  mysql:
+    image: mysql:8.0
+    container_name: ${PROJECT_NAME}-mysql
+    restart: unless-stopped
+    volumes:
+      - mysql:/var/lib/mysql
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - ${PROJECT_NAME}
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ${PROJECT_NAME}-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - 8080:80
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+
+    networks:
+      - ${PROJECT_NAME}
+
+  nginx:
+    build: ./docker/nginx
+    container_name: ${PROJECT_NAME}-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8443:8443"
+    volumes:
+      - ${API_DIRECTORY}:/var/www/project/api
+      - ${FRONTEND_DIRECTORY}:/var/www/project/frontend
+      - ./docker/certs/local:/etc/nginx/certs
+      - public_bundles:/var/www/project/api/public/bundles
+    networks:
+      - ${PROJECT_NAME}
+    environment:
+      NODE_ENV: dev
+      NGINX_HOST: ${NGINX_HOST_LOCAL}
+      NGINX_PORT: ${NGINX_PORT_LOCAL}
+      NGINX_CERT_CRT: ${NGINX_CERT_CRT_LOCAL}
+      NGINX_CERT_KEY: ${NGINX_CERT_KEY_LOCAL}
+      NGINX_CONF_TYPE: ${NGINX_CONF_TYPE}
+
+networks:
+  project:
+
+volumes:
+  mysql:
+  vendor_data:
+  public_bundles:

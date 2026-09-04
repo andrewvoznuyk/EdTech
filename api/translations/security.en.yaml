@@ -1,0 +1,5 @@
+security:
+    account_deactivated: 'Your account has been deactivated.'
+    email_not_verified: 'Please verify your email before logging in.'
+response:
+    2fa_required: 'Please enter the verification code.'

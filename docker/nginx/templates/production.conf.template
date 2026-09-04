@@ -1,0 +1,48 @@
+log_format postdata escape=json '$remote_addr "$request" $status BODY="$request_body"';
+
+server {
+    listen 80;
+    server_name localhost trustua.uk;
+
+    # Logs
+    access_log /var/log/nginx/trustua.uk.access.log postdata;
+    error_log /var/log/nginx/trustua.uk.error.log;
+
+    client_max_body_size 50M;
+    root /var/www/project/api/public;
+
+    location /api {
+        # Check if file exists, else send to Symfony index.php
+        try_files $uri /index.php$is_args$args;
+    }
+
+    location ~ ^/index\.php(/|$) {
+        fastcgi_pass api:9000;
+        fastcgi_split_path_info ^(.+\.php)(/.*)$;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME /var/www/project/api/public$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT /var/www/project/api/public;
+        internal;
+    }
+
+    location ~* ^/(bundles|_profiler|_wdt|uploads)/.+\.(jpg|jpeg|gif|png|ico|zip|woff2)$ {
+        root /var/www/project/api/public;
+        expires 30d;
+    }
+
+    location / {
+        proxy_pass http://frontend:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        proxy_buffering off;
+    }
+
+    # Deny access to other .php files
+    location ~ \.php$ {
+        return 404;
+    }
+}

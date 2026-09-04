@@ -1,0 +1,33 @@
+imports:
+    - { resource: services/soft_delete.yaml }
+    - { resource: services/validator.yaml }
+    - { resource: services/file_service.yaml }
+    - { resource: services/email_verification_service.yaml }
+    - { resource: services/verification_email_limiter.yaml }
+    - { resource: services/asset_factories.yaml }
+    - { resource: services/two_factor_provider_service.yaml }
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        bind:
+            $emailLimiter: '@limiter.verification_email_limiter'
+            $twoFactorResendLimiter: '@limiter.two_factor_resend'
+            $twoFactorAuthLimiter: '@limiter.two_factor_auth'
+            $assetFactories: !tagged_iterator app.asset_factory
+            $twoFactorProviders: !tagged_iterator app.two_factor_provider
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+            - '../src/ApiExceptionSubscriber/AssetFulfillmentSubscriber.php'
+
+    App\Action\:
+        resource: '../src/Action/'
+        tags: [ 'controller.service_arguments' ]
+
+

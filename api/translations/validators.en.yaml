@@ -1,0 +1,39 @@
+user:
+    email_unique: 'There is already an account with this email.'
+    verify_email:
+        token_not_blank: 'The verification token cannot be empty.'
+    account_deleted_restore: 'Your account is in the process of being deleted. Do you want to cancel the deletion and restore it?' # Додано
+    google_auth:
+        token_required: 'Token is required.'
+        invalid_format: 'Invalid token format.'
+        invalid_token: 'Invalid ID token.'
+        email_missing: 'Email not provided by Google.'
+        account_not_found_or_deleted: 'Account not found or not deleted.' # <- ДОДАЛИ ЦЕ
+    password:
+        changed_successfully: 'Password changed successfully.'
+    two_factor:
+        email_code_required: 'Email and code are required'
+        invalid_method: 'Invalid method'
+        user_not_found: 'User not found'
+        method_not_enabled: 'Method not enabled for user'
+        invalid_code: 'Invalid or expired code'
+        code_sent: 'Verification code sent to email.'
+        code_required: 'Code is required'
+company:
+    name_unique: 'A company with this name already exists.'
+    edrpou_unique: 'A company with this EDRPOU already exists.'
+    rnokpp_unique: 'A company with this RNOKPP already exists.'
+    edrpou_rnokpp_conflict: 'You must specify only one field: either EDRPOU or RNOKPP (filling both is not allowed).'
+    edrpou_length: 'EDRPOU must contain exactly 8 characters.'
+    phone_invalid: 'The entered phone number is invalid.'
+    rnokpp_length: 'RNOKPP must contain exactly 10 characters.'
+validator:
+    profile:
+        unique_rnokpp: 'A company with this RNOKPP already exists.'
+        unique_iban: 'This IBAN is already registered in the system.'
+        invalid_iban: 'Invalid IBAN format.'
+        invalid_phone: 'The entered phone number is invalid.'
+        invalid_rnokpp: 'RNOKPP (TIN) must contain exactly 10 digits.'
+    file:
+        size_exceeded: 'The file size must not exceed 5 MB.'
+    unique_except_unverified: 'A record with these details already exists and is verified.'

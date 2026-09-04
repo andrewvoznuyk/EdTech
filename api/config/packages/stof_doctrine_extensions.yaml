@@ -1,0 +1,6 @@
+stof_doctrine_extensions:
+    default_locale: uk_UA
+    orm:
+        default:
+            timestampable: true
+            softdeleteable: true

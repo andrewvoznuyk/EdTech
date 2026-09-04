@@ -1,0 +1,17 @@
+services:
+  api:
+    build:
+      dockerfile: ../docker/api/mac/Dockerfile
+    volumes:
+      - vendor_api:/var/www/project/api/vendor
+      - var_api:/var/www/project/api/var
+
+  mysql:
+    platform: linux/amd64
+
+  phpmyadmin:
+    platform: linux/amd64
+
+volumes:
+  vendor_api:
+  var_api:

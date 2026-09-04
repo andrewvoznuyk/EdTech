@@ -1,0 +1,21 @@
+api_platform:
+    title: Trust Voice
+    version: 1.0.0
+    formats:
+        jsonld: [ 'application/ld+json' ]
+        json: [ 'application/json' ]
+    defaults:
+        stateless: true
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin']
+    eager_loading:
+        enabled: false
+        max_joins: 50
+    swagger:
+        http_auth:
+            JWT:
+                scheme: bearer
+                bearerFormat: JWT
+    openapi:
+        contact:
+            name: 'TrustVoice API'

@@ -1,0 +1,3 @@
+services:
+
+    verification_email_limiter: '@limiter.verification_email_limiter'

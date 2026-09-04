@@ -1,0 +1,11 @@
+.DS_Store
+/.idea
+/.vs
+/.vscode
+/api/src/.preload.php
+/api/.env
+.env
+/data
+docker-compose.override.yml
+mutagen.yml.lock
+.claude
