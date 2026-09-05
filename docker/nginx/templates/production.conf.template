@@ -12,17 +12,16 @@ server {
     root /var/www/project/api/public;
 
     location /api {
-        # Check if file exists, else send to Symfony index.php
-        try_files $uri /index.php$is_args$args;
-    }
-
-    location ~ ^/index\.php(/|$) {
-        fastcgi_pass api:9000;
-        fastcgi_split_path_info ^(.+\.php)(/.*)$;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME /var/www/project/api/public$fastcgi_script_name;
-        fastcgi_param DOCUMENT_ROOT /var/www/project/api/public;
-        internal;
+        proxy_pass http://api:80;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_read_timeout 300;
     }
 
     location ~* ^/(bundles|_profiler|_wdt|uploads)/.+\.(jpg|jpeg|gif|png|ico|zip|woff2)$ {

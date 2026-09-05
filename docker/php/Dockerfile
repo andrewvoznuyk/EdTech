@@ -1,9 +1,9 @@
-FROM php:8.4-fpm-alpine AS base
+FROM dunglas/frankenphp:1-php8.4-alpine AS base
 
 RUN apk add --no-cache git acl bash vim
 
-COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions pdo_mysql intl zip opcache bcmath gd
+RUN install-php-extensions amqp
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -13,9 +13,11 @@ COPY docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY docker/php/php-ini-overrides.ini /usr/local/etc/php/conf.d/99-overrides.ini
+COPY docker/php/Caddyfile /etc/caddy/Caddyfile
+COPY docker/php/Caddyfile /etc/frankenphp/Caddyfile
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["php-fpm"]
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
 
 
 FROM base AS dev
@@ -26,6 +28,7 @@ COPY docker/php/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 FROM base AS prod
 
 ENV APP_ENV=prod
+ENV FRANKENPHP_CONFIG="worker ./public/index.php"
 
 COPY docker/php/php-prod.ini /usr/local/etc/php/conf.d/app-prod.ini
 
