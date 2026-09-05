@@ -48,6 +48,11 @@ class GoogleUserAuthenticatedEvent extends Event
         ];
     }
 
+    public function getAvatarUrl(): ?string
+    {
+        return $this->payload['picture'] ?? null;
+    }
+
     /**
      * @return User|null
      */

@@ -73,4 +73,21 @@ readonly class FileService
 
         return $urls;
     }
+
+    /**
+     * @param string $fileContent
+     * @param File $file
+     * @param string $mimeType
+     * @return Result
+     */
+    public function uploadContent(string $fileContent, File $file, string $mimeType): Result
+    {
+        return $this->s3->putObject([
+            'Bucket'      => self::BUCKET,
+            'Key'         => $file->getFileKey(),
+            'Body'        => $fileContent,
+            'ContentType' => $mimeType,
+            'ACL'         => 'private',
+        ]);
+    }
 }
