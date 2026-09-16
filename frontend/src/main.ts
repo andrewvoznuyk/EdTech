@@ -1,12 +1,15 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import App from './App.vue';
+import router from './router';
+import { weblatePlugin, initWeblate } from './weblate';
 
-import App from './App.vue'
-import router from './router'
+const app = createApp(App);
 
-const app = createApp(App)
+app.use(createPinia());
+app.use(router);
+app.use(weblatePlugin);
 
-app.use(createPinia())
-app.use(router)
+initWeblate();
 
-app.mount('#app')
+app.mount('#app');

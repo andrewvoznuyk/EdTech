@@ -1,0 +1,67 @@
+services:
+  weblate-db:
+    image: postgres:16-alpine
+    container_name: ${PROJECT_NAME:-project}-weblate-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: weblate
+      POSTGRES_PASSWORD: weblatepassword
+      POSTGRES_DB: weblate
+    volumes:
+      - weblate_pgdata:/var/lib/postgresql/data
+    networks:
+      - weblate_internal
+
+  weblate-cache:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME:-project}-weblate-cache
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - weblate_redisdata:/data
+    networks:
+      - weblate_internal
+
+  weblate:
+    image: weblate/weblate:latest
+    container_name: ${PROJECT_NAME:-project}-weblate
+    restart: unless-stopped
+    depends_on:
+      - weblate-db
+      - weblate-cache
+    ports:
+      - "8088:8080"
+    environment:
+      WEBLATE_EMAIL_HOST: "localhost"
+      WEBLATE_SERVER_EMAIL: "weblate@example.com"
+      WEBLATE_DEFAULT_FROM_EMAIL: "weblate@example.com"
+      WEBLATE_SITE_DOMAIN: "localhost:8088"
+      WEBLATE_ADMIN_NAME: "Andrew"
+      WEBLATE_ADMIN_EMAIL: "admin@example.com"
+      WEBLATE_ADMIN_PASSWORD: "adminpassword123"
+      WEBLATE_CORS_ALLOW_ALL_ORIGINS: "true"
+      WEBLATE_CORS_ALLOWED_ORIGINS: "https://localhost,http://localhost,http://localhost:3000,http://localhost:5173"
+      POSTGRES_HOST: weblate-db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: weblate
+      POSTGRES_PASSWORD: weblatepassword
+      POSTGRES_DATABASE: weblate
+      REDIS_HOST: weblate-cache
+      REDIS_PORT: "6379"
+      REDIS_DB: "1"
+      WEBLATE_SECRET_KEY: "edtech-secret-key-weblate-change-me"
+    volumes:
+      - weblate_data:/app/data
+    networks:
+      - weblate_internal
+      - edtech_project
+
+networks:
+  weblate_internal:
+  edtech_project:
+    external: true
+
+volumes:
+  weblate_pgdata:
+  weblate_redisdata:
+  weblate_data:

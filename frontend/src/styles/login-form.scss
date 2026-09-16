@@ -1,0 +1,205 @@
+@use './variables' as *;
+
+.login-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.two-fa-section {
+  text-align: center;
+
+  .form-title {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text;
+  }
+
+  .form-desc {
+    margin: 0 0 20px;
+    font-size: 13px;
+    color: $color-text-muted;
+    line-height: 1.5;
+
+    strong {
+      color: $color-text;
+    }
+  }
+
+  .two-fa-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    margin-top: 14px;
+  }
+}
+
+.alert {
+  padding: 12px 14px;
+  border-radius: 0;
+  font-size: 13px;
+  line-height: 1.4;
+
+  &.alert-error {
+    background: $color-error-bg;
+    border: 1px solid $color-error;
+    color: $color-error-text;
+  }
+
+  &.alert-success {
+    background: $color-success-bg;
+    border: 1px solid $color-success;
+    color: $color-success-text;
+  }
+}
+
+.form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: $color-text-dim;
+  }
+}
+
+.form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: 0;
+  color: $color-text;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    border-color: #ffffff;
+    box-shadow: none;
+  }
+
+  &.code-input {
+    text-align: center;
+    font-size: 24px;
+    letter-spacing: 8px;
+    font-weight: 700;
+    padding: 12px;
+  }
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .form-input {
+    padding-right: 90px;
+  }
+
+  .toggle-pwd-btn {
+    position: absolute;
+    right: 10px;
+    background: transparent;
+    border: none;
+    color: $color-text-muted;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 6px;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: $color-text;
+    }
+  }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: $transition-default;
+  min-height: 44px;
+
+  &.btn-primary {
+    background: #ffffff;
+    color: #111111;
+
+    &:hover:not(:disabled) {
+      background: #e5e5e5;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: $color-text;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &.text-muted {
+    color: $color-text-muted;
+    text-decoration: none;
+
+    &:hover {
+      color: $color-text;
+      text-decoration: underline;
+    }
+  }
+}
+
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: $color-text-muted;
+  margin-top: 8px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0;
+  border-top-color: #ffffff;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

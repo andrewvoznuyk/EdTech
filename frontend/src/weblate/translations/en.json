@@ -1,0 +1,54 @@
+{
+  "common": {
+    "brand": "EdTech",
+    "platform": "EdTech Platform",
+    "language": "Language",
+    "loading": "Loading...",
+    "sign_in": "Sign In",
+    "register": "Register",
+    "logout": "Log Out",
+    "show": "Show",
+    "hide": "Hide"
+  },
+  "auth": {
+    "email_label": "Email",
+    "password_label": "Password",
+    "confirm_password_label": "Confirm Password",
+    "first_name_label": "First Name",
+    "last_name_label": "Last Name",
+    "forgot_password": "Forgot password?",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "two_factor_title": "Two-Factor Authentication",
+    "two_factor_desc": "We sent a 6-digit confirmation code to",
+    "verify_code": "Confirm",
+    "resend_code": "Resend code",
+    "back_to_login": "Back to sign in",
+    "register_success_title": "Registration Successful!",
+    "register_success_desc": "Your account has been created. Please sign in to continue.",
+    "proceed_to_login": "Proceed to sign in"
+  },
+  "hero": {
+    "welcome": "Welcome,",
+    "user_id": "User ID:",
+    "roles": "Roles:",
+    "guest_desc": "Sign in to your account or register to access learning materials."
+  },
+  "validators": {
+    "user": {
+      "email_unique": "There is already an account with this email.",
+      "password_mismatch": "Passwords do not match.",
+      "password_too_short": "Password must be at least 8 characters.",
+      "invalid_code": "Invalid or expired code.",
+      "code_sent": "Verification code sent to email.",
+      "code_required": "Code is required.",
+      "email_code_required": "Email and code are required.",
+      "account_deleted_restore": "Your account is in the process of being deleted. Do you want to cancel the deletion and restore it?"
+    }
+  },
+  "security": {
+    "account_deactivated": "Your account has been deactivated.",
+    "email_not_verified": "Please verify your email before logging in.",
+    "two_factor_required": "Please enter the verification code."
+  }
+}
