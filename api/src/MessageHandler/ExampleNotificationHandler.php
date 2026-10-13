@@ -10,11 +10,11 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
-class ExampleNotificationHandler
+readonly class ExampleNotificationHandler
 {
     public function __construct(
-        private readonly LoggerInterface $logger,
-        private readonly EntityManagerInterface $entityManager,
+        private LoggerInterface        $logger,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
