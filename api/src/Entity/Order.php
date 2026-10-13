@@ -2,62 +2,88 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiResource;
+use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
+use App\Service\Interface\UserAwareInterface;
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\CustomIdGenerator;
 use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\GeneratedValue;
 use Doctrine\ORM\Mapping\Id;
 use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping\OneToMany;
 use Doctrine\ORM\Mapping\Table;
+use Doctrine\ORM\Mapping\Version;
 use Gedmo\Mapping\Annotation\SoftDeleteable;
 use App\Entity\Trait\SoftDeleteableEntity;
 use App\Entity\Trait\TimestampableEntity;
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\Constraints\NotNull;
 
-#[ApiResource]
 #[Entity(repositoryClass: OrderRepository::class)]
 #[Table(name: 'orders')]
 #[SoftDeleteable(fieldName: 'deletedAt', timeAware: false, hardDelete: false)]
-class Order
+class Order implements UserAwareInterface
 {
     use TimestampableEntity;
     use SoftDeleteableEntity;
 
+    public const string GET_COLLECTION_ORDER = 'get:collection:order';
+    public const string GET_ITEM_ORDER = 'get:item:order';
+    public const string POST_COLLECTION_ORDER = 'post:collection:order';
+    public const string PATCH_ITEM_ORDER = 'patch:item:order';
+    public const string PATCH_ITEM_ORDER_STATUS = 'patch:item:order:status';
+
     /**
-     * @var int|null
+     * @var Uuid|null
      */
     #[Id]
-    #[GeneratedValue]
-    #[Column]
-    private ?int $id = null;
+    #[Column(type: 'uuid', unique: true)]
+    #[GeneratedValue(strategy: 'CUSTOM')]
+    #[CustomIdGenerator(class: 'doctrine.uuid_generator')]
+    #[Groups([self::GET_ITEM_ORDER, self::GET_COLLECTION_ORDER])]
+    private ?Uuid $id = null;
 
     /**
      * @var User|null
      */
     #[ManyToOne(inversedBy: 'orders')]
+    #[Groups([self::GET_ITEM_ORDER, self::GET_COLLECTION_ORDER])]
     private ?User $user = null;
 
     /**
      * @var string|null
      */
     #[Column(type: Types::DECIMAL, precision: 12, scale: 2)]
+    #[Groups([self::GET_ITEM_ORDER, self::GET_COLLECTION_ORDER])]
     private ?string $totalPrice = null;
+
+    /**
+     * @var OrderStatus
+     */
+    #[Column(type: Types::STRING, length: 20, enumType: OrderStatus::class, options: ['default' => OrderStatus::PENDING->value])]
+    #[Groups([self::GET_ITEM_ORDER, self::GET_COLLECTION_ORDER, self::PATCH_ITEM_ORDER, self::PATCH_ITEM_ORDER_STATUS])]
+    #[NotNull(groups: [self::PATCH_ITEM_ORDER_STATUS])]
+    private OrderStatus $status = OrderStatus::PENDING;
+
+    /**
+     * @var int|null
+     */
+    #[Version]
+    #[Column(type: Types::INTEGER, options: ['default' => 1])]
+    private ?int $version = 1;
 
     /**
      * @var Collection<int, OrderItem>
      */
     #[OneToMany(targetEntity: OrderItem::class, mappedBy: 'customerOrder', cascade: ['persist', 'remove'])]
+    #[Groups([self::GET_ITEM_ORDER, self::GET_COLLECTION_ORDER, self::POST_COLLECTION_ORDER])]
     private Collection $orderItems;
-
-    /**
-     * @var Collection<int, Payments>
-     */
-    #[OneToMany(targetEntity: Payments::class, mappedBy: 'customerOrder', cascade: ['persist', 'remove'])]
-    private Collection $payments;
 
     /**
      *
@@ -65,13 +91,12 @@ class Order
     public function __construct()
     {
         $this->orderItems = new ArrayCollection();
-        $this->payments = new ArrayCollection();
     }
 
     /**
-     * @return int|null
+     * @return Uuid
      */
-    public function getId(): ?int
+    public function getId(): Uuid
     {
         return $this->id;
     }
@@ -115,6 +140,65 @@ class Order
     }
 
     /**
+     * @return OrderStatus
+     */
+    public function getStatus(): OrderStatus
+    {
+        return $this->status;
+    }
+
+    /**
+     * @param OrderStatus $status
+     * @return $this
+     */
+    public function setStatus(OrderStatus $status): static
+    {
+        $this->status = $status;
+
+        return $this;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getVersion(): ?int
+    {
+        return $this->version;
+    }
+
+    /**
+     * @return $this
+     */
+    public function recalculateTotalPrice(): static
+    {
+        $total = '0.00';
+        foreach ($this->orderItems as $item) {
+            $total = bcadd($total, $item->getTotalPrice() ?? '0.00', 2);
+        }
+        $this->totalPrice = $total;
+
+        return $this;
+    }
+
+    /**
+     * @return DateTimeImmutable|null
+     */
+    #[Groups([self::GET_ITEM_ORDER, self::GET_COLLECTION_ORDER])]
+    public function getCreatedAt(): ?DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    /**
+     * @return DateTimeImmutable|null
+     */
+    #[Groups([self::GET_ITEM_ORDER, self::GET_COLLECTION_ORDER])]
+    public function getUpdatedAt(): ?DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    /**
      * @return Collection<int, OrderItem>
      */
     public function getOrderItems(): Collection
@@ -145,36 +229,6 @@ class Order
         if ($this->orderItems->removeElement($orderItem)) {
             if ($orderItem->getCustomerOrder() === $this) {
                 $orderItem->setCustomerOrder(null);
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Payments>
-     */
-    public function getPayments(): Collection
-    {
-        return $this->payments;
-    }
-
-    public function addPayment(Payments $payment): static
-    {
-        if (!$this->payments->contains($payment)) {
-            $this->payments->add($payment);
-            $payment->setCustomerOrder($this);
-        }
-
-        return $this;
-    }
-
-    public function removePayment(Payments $payment): static
-    {
-        if ($this->payments->removeElement($payment)) {
-            // set the owning side to null (unless already changed)
-            if ($payment->getCustomerOrder() === $this) {
-                $payment->setCustomerOrder(null);
             }
         }
 

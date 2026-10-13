@@ -83,4 +83,15 @@ class EmailSenderService
 
         $this->mailer->send($email);
     }
+
+    /**
+     * @param string $userEmail
+     * @param string $type
+     * @return void
+     */
+    public function resetLimit(string $userEmail, string $type): void
+    {
+        $limiterKey = $userEmail . '_' . $type;
+        $this->emailLimiter->create($limiterKey)->reset();
+    }
 }

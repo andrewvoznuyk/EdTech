@@ -18,12 +18,12 @@ class UserRemoveListener
      */
     public function preRemove(User $user, PreRemoveEventArgs $args): void
     {
-        $em = $args->getObjectManager();
+        $entityManager = $args->getObjectManager();
 
-        $tokens = $em->getRepository(RefreshToken::class)->findBy(['username' => $user->getUserIdentifier()]);
+        $tokens = $entityManager->getRepository(RefreshToken::class)->findBy(['username' => $user->getUserIdentifier()]);
 
         foreach ($tokens as $token) {
-            $em->remove($token);
+            $entityManager->remove($token);
         }
     }
 }

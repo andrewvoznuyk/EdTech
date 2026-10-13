@@ -11,11 +11,18 @@ use Symfony\Component\Translation\LocaleSwitcher;
 
 readonly class UserLocaleSubscriber implements EventSubscriberInterface
 {
+    /**
+     * @param Security $security
+     * @param LocaleSwitcher $localeSwitcher
+     */
     public function __construct(
         private Security $security,
         private LocaleSwitcher $localeSwitcher
     ) {}
 
+    /**
+     * @return array[]
+     */
     public static function getSubscribedEvents(): array
     {
         return [
@@ -23,6 +30,10 @@ readonly class UserLocaleSubscriber implements EventSubscriberInterface
         ];
     }
 
+    /**
+     * @param RequestEvent $event
+     * @return void
+     */
     public function onKernelRequest(RequestEvent $event): void
     {
         if (!$event->isMainRequest()) {

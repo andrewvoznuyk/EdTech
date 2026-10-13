@@ -4,7 +4,7 @@ namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
-use App\Action\LogoutAction;
+use App\Controller\LogoutController;
 use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\Table;
 use Gesdinet\JWTRefreshTokenBundle\Entity\RefreshToken as BaseRefreshToken;
@@ -16,7 +16,7 @@ use Gesdinet\JWTRefreshTokenBundle\Entity\RefreshToken as BaseRefreshToken;
         new Post(
             uriTemplate: '/token/refresh/logout',
             status: 204,
-            controller: LogoutAction::class,
+            controller: LogoutController::class,
             input: false,
             output: false,
             read: false,

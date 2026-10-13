@@ -2,6 +2,8 @@
 
 namespace App\Enum;
 
+use App\Enum\Trait\EnumValuesTrait;
+
 enum MimeType: string
 {
     // Images

@@ -9,14 +9,13 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
-use App\Action\RegisterUserAction;
-use App\Action\Resend2FAAction;
-use App\Action\ResendVerificationAction;
-use App\Action\VerifyEmailAction;
 use App\Enum\TwoFactorMethodEnum;
 use App\Entity\Trait\SoftDeleteableEntity;
 use App\Entity\Trait\TimestampableEntity;
 use App\Repository\UserRepository;
+use App\State\User\ResendVerificationProcessor;
+use App\State\User\UserRegistrationProcessor;
+use App\State\User\VerifyEmailProcessor;
 use DateTime;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -60,14 +59,15 @@ use Symfony\Component\Validator\Constraints\Valid;
             uriTemplate: '/users/register',
             normalizationContext: ['groups' => [User::GET_ITEM_USER]],
             denormalizationContext: ['groups' => [User::POST_COLLECTION_USER]],
-            processor: RegisterUserAction::class
+            validationContext: ['groups' => [User::POST_COLLECTION_USER]],
+            processor: UserRegistrationProcessor::class
         ),
         new Post(
             uriTemplate: '/users/verify-email',
             denormalizationContext: ['groups' => [User::POST_VERIFY_EMAIL]],
             validationContext: ['groups' => [User::POST_VERIFY_EMAIL]],
             output: false,
-            processor: VerifyEmailAction::class,
+            processor: VerifyEmailProcessor::class,
         ),
         new Post(
             uriTemplate: '/users/resend-verification',
@@ -75,15 +75,7 @@ use Symfony\Component\Validator\Constraints\Valid;
             denormalizationContext: ['groups' => [User::POST_RESEND_VERIFICATION_USER]],
             validationContext: ['groups' => [User::POST_RESEND_VERIFICATION_USER]],
             output: false,
-            processor: ResendVerificationAction::class,
-        ),
-        new Post(
-            uriTemplate: '/users/resend-2fa',
-            status: 202,
-            denormalizationContext: ['groups' => [User::POST_RESET_2FA_USER]],
-            validationContext: ['groups' => [User::POST_RESET_2FA_USER]],
-            output: false,
-            processor: Resend2FAAction::class,
+            processor: ResendVerificationProcessor::class,
         ),
         new Patch(
             uriTemplate: '/users/{id}',
@@ -112,13 +104,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public const string GET_ITEM_USER = 'get:item:user';
     public const string POST_COLLECTION_USER = 'post:collection:user';
     public const string PATCH_COLLECTION_USER = 'patch:item:user:profile';
-    public const string POST_RESET_PASSWORD_USER = 'user:reset-password';
-    public const string POST_FORGOT_PASSWORD_USER = 'user:forgot-password';
-    public const string POST_RESET_2FA_USER = 'user:resend-2fa';
-    public const string POST_VERIFY_EMAIL = 'post:user:verify-email';
-    public const string POST_RESEND_VERIFICATION_USER = 'post:user:resend-verification';
-    public const string POST_RESTORE_REQUEST = 'post:user:restore-request';
-    public const string POST_RESTORE_CONFIRM = 'post:user:restore-confirm';
+    public const string PATCH_ITEM_USER = self::PATCH_COLLECTION_USER;
+    public const string POST_RESET_PASSWORD_USER = 'post:collection:user:reset-password';
+    public const string POST_FORGOT_PASSWORD_USER = 'post:collection:user:forgot-password';
+    public const string POST_RESET_2FA_USER = 'post:collection:user:resend-2fa';
+    public const string POST_VERIFY_EMAIL = 'post:collection:user:verify-email';
+    public const string POST_RESEND_VERIFICATION_USER = 'post:collection:user:resend-verification';
+    public const string POST_RESTORE_REQUEST = 'post:collection:user:restore-request';
+    public const string POST_RESTORE_CONFIRM = 'post:collection:user:restore-confirm';
     /**
      * @var Uuid|null
      */
@@ -176,10 +169,28 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private Collection $twoFactorMethods;
 
     /**
+     * @var Collection<int, File>
+     */
+    #[OneToMany(targetEntity: File::class, mappedBy: 'user')]
+    private Collection $files;
+
+    /**
      * @var string|null
      */
-    #[Column(length: 6, nullable: true)]
+    #[Column(length: 64, nullable: true)]
     private ?string $authCode = null;
+
+    /**
+     * @var int
+     */
+    #[Column(type: 'smallint', options: ['default' => 0])]
+    private int $authCodeAttempts = 0;
+
+    /**
+     * @var array<string>|null
+     */
+    #[Column(type: 'json', nullable: true)]
+    private ?array $backupCodes = null;
 
     /**
      * @var string|null
@@ -263,6 +274,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->assets = new ArrayCollection();
         $this->companyProfile = new ArrayCollection();
         $this->twoFactorMethods = new ArrayCollection();
+        $this->files = new ArrayCollection();
 
         $this->roles = [User::ROLE_USER];
     }
@@ -306,6 +318,35 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         if ($this->assets->removeElement($asset)) {
             if ($asset->getUser() === $this) {
                 $asset->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, File>
+     */
+    public function getFiles(): Collection
+    {
+        return $this->files;
+    }
+
+    public function addFile(File $file): static
+    {
+        if (!$this->files->contains($file)) {
+            $this->files->add($file);
+            $file->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFile(File $file): static
+    {
+        if ($this->files->removeElement($file)) {
+            if ($file->getUser() === $this) {
+                $file->setUser(null);
             }
         }
 
@@ -479,6 +520,86 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->authCode = $authCode;
 
         return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getAuthCodeAttempts(): int
+    {
+        return $this->authCodeAttempts;
+    }
+
+    /**
+     * @param int $authCodeAttempts
+     * @return $this
+     */
+    public function setAuthCodeAttempts(int $authCodeAttempts): self
+    {
+        $this->authCodeAttempts = $authCodeAttempts;
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function incrementAuthCodeAttempts(): self
+    {
+        $this->authCodeAttempts++;
+
+        return $this;
+    }
+
+    /**
+     * @return array<string>|null
+     */
+    public function getBackupCodes(): ?array
+    {
+        return $this->backupCodes;
+    }
+
+    /**
+     * @param array<string>|null $backupCodes
+     * @return $this
+     */
+    public function setBackupCodes(?array $backupCodes): self
+    {
+        $this->backupCodes = $backupCodes;
+
+        return $this;
+    }
+
+    /**
+     * @param string $hashedCode
+     * @return bool
+     */
+    public function removeBackupCode(string $hashedCode): bool
+    {
+        if (null === $this->backupCodes) {
+            return false;
+        }
+
+        foreach ($this->backupCodes as $key => $code) {
+            if (hash_equals($code, $hashedCode)) {
+                unset($this->backupCodes[$key]);
+                $this->backupCodes = array_values($this->backupCodes);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return bool
+     */
+    #[Groups([User::GET_ITEM_USER])]
+    #[SerializedName('has_password')]
+    public function hasPassword(): bool
+    {
+        return null !== $this->password;
     }
 
     /**
@@ -657,17 +778,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    /**
+     * @param UserTwoFactorMethod $method
+     * @return $this
+     */
     public function removeTwoFactorMethod(UserTwoFactorMethod $method): self
     {
-        if ($this->twoFactorMethods->removeElement($method)) {
-            if ($method->getUser() === $this) {
-                $method->setUser(null);
-            }
-        }
+        $this->twoFactorMethods->removeElement($method);
 
         return $this;
     }
 
+    #[Groups([User::GET_ITEM_USER, User::GET_COLLECTION_USER])]
+    #[SerializedName('enabled_2fa')]
     public function has2faEnabled(): bool
     {
         foreach ($this->twoFactorMethods as $method) {
@@ -702,8 +825,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
+     * @return string|null
+     */
+    #[Groups([User::GET_ITEM_USER])]
+    #[SerializedName('default_2fa_method')]
+    public function getDefaultTwoFactorMethodName(): ?string
+    {
+        return $this->getDefaultTwoFactorMethod()?->value;
+    }
+
+    /**
      * @return array<string>
      */
+    #[Groups([User::GET_ITEM_USER])]
+    #[SerializedName('active_2fa_methods')]
     public function getActiveTwoFactorMethods(): array
     {
         $methods = [];

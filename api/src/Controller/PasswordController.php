@@ -3,7 +3,6 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
 use App\Service\Email\EmailSenderService;
 use App\Service\Email\Strategy\PasswordResetEmail;
 use App\Service\User\TokenUserResolver;
@@ -21,7 +20,6 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final class PasswordController extends AbstractController
 {
     /**
-     * @param UserRepository $userRepository
      * @param EmailSenderService $emailService
      * @param UserPasswordHasherInterface $passwordHasher
      * @param EntityManagerInterface $entityManager
@@ -29,7 +27,6 @@ final class PasswordController extends AbstractController
      * @param TranslatorInterface $translator
      */
     public function __construct(
-        private readonly UserRepository $userRepository,
         private readonly EmailSenderService $emailService,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly EntityManagerInterface $entityManager,
@@ -45,7 +42,7 @@ final class PasswordController extends AbstractController
      */
     #[Route('/api/users/forgot-password', name: 'api_forgot_password', methods: ['POST'])]
     public function forgotPassword(#[MapRequestPayload(serializationContext: ['groups' => [User::POST_FORGOT_PASSWORD_USER]], validationGroups: [User::POST_FORGOT_PASSWORD_USER])] User $userDto): Response {
-        $user = $this->userRepository->findOneBy(['email' => $userDto->getEmail()]);
+        $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $userDto->getEmail()]);
 
         if ($user) {
             $this->emailService->setStrategy(new PasswordResetEmail());

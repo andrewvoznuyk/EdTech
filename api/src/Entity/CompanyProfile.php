@@ -9,12 +9,13 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use App\Entity\Trait\SoftDeleteableEntity;
 use App\Entity\Trait\TimestampableEntity;
+use App\Repository\CompanyProfileRepository;
 use App\Service\Interface\UserAwareInterface;
-use App\State\MyCompaniesProvider;
 use DateTime;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping\Column;
@@ -33,7 +34,7 @@ use Symfony\Component\Validator\Constraints\Expression;
 use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotBlank;
 
-#[Entity]
+#[Entity(repositoryClass: CompanyProfileRepository::class)]
 #[ApiResource(
     operations: [
         new GetCollection(
@@ -47,11 +48,10 @@ use Symfony\Component\Validator\Constraints\NotBlank;
             normalizationContext: ['groups' => [CompanyProfile::GET_ITEM_COMPANY, File::GET_COLLECTION_FILE]],
         ),
         new GetCollection(
-            uriTemplate: '/my-companies',
+            uriTemplate: '/users/{id}/companies',
+            uriVariables: ['id' => new Link(toProperty: 'user', fromClass: User::class),],
             normalizationContext: ['groups' => [CompanyProfile::GET_COLLECTION_COMPANY, File::GET_COLLECTION_FILE]],
-            security: "is_granted('ROLE_USER')",
-            name: 'my_companies',
-            provider: MyCompaniesProvider::class,
+            security: "is_granted('ROLE_USER') and request.attributes.get('id') == user.getId()",
         ),
         new Post(
             uriTemplate: '/companies',
@@ -62,7 +62,7 @@ use Symfony\Component\Validator\Constraints\NotBlank;
         new Patch(
             uriTemplate: '/companies/{id}',
             normalizationContext: ['groups' => [CompanyProfile::GET_ITEM_COMPANY, File::GET_COLLECTION_FILE]],
-            denormalizationContext: ['groups' => [CompanyProfile::PATCH_COLLECTION_COMPANY]],
+            denormalizationContext: ['groups' => [CompanyProfile::PATCH_ITEM_COMPANY]],
             security: "is_granted('" .User::ROLE_ADMIN. "') or (is_granted('" .User::ROLE_USER. "') and object.getUser() == user)"
         ),
         new Delete(
@@ -86,7 +86,7 @@ class CompanyProfile implements UserAwareInterface
     public const string GET_COLLECTION_COMPANY = 'get:collection:company';
     public const string GET_ITEM_COMPANY = 'get:item:company';
     public const string POST_COLLECTION_COMPANY = 'post:collection:company';
-    public const string PATCH_COLLECTION_COMPANY = 'patch:item:company';
+    public const string PATCH_ITEM_COMPANY = 'patch:item:company';
 
     /**
      * @var Uuid|null
@@ -103,7 +103,7 @@ class CompanyProfile implements UserAwareInterface
      */
     #[ManyToOne(targetEntity: File::class)]
     #[JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?File $logo = null;
 
     /**
@@ -119,7 +119,7 @@ class CompanyProfile implements UserAwareInterface
      */
     #[ManyToOne(targetEntity: File::class)]
     #[JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?File $wallpaper = null;
 
     /**
@@ -127,7 +127,7 @@ class CompanyProfile implements UserAwareInterface
      */
     #[NotBlank]
     #[Column(length: 500, nullable: true)]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?string $actualAddress = null;
 
     /**
@@ -136,7 +136,7 @@ class CompanyProfile implements UserAwareInterface
     #[NotBlank]
     #[Length(min: 3, max: 255)]
     #[Column(length: 255, unique: true)]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?string $companyName = null;
 
     /**
@@ -144,7 +144,7 @@ class CompanyProfile implements UserAwareInterface
      */
     #[Length(exactly: 8, exactMessage: 'company.edrpou_length')]
     #[Column(length: 50, unique: true, nullable: true)]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?string $edrpou = null;
 
     /**
@@ -152,7 +152,7 @@ class CompanyProfile implements UserAwareInterface
      */
     #[PhoneNumber(message: 'company.phone_invalid')]
     #[Column(length: 20, nullable: true)]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?string $phone = null;
 
     /**
@@ -160,7 +160,7 @@ class CompanyProfile implements UserAwareInterface
      */
     #[Length(min: 3, max: 255)]
     #[Column(length: 255, nullable: true)]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?string $position = null;
 
     /**
@@ -168,7 +168,7 @@ class CompanyProfile implements UserAwareInterface
      */
     #[NotBlank]
     #[Column(length: 500, nullable: true)]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?string $registrationAddress = null;
 
     /**
@@ -176,7 +176,7 @@ class CompanyProfile implements UserAwareInterface
      */
     #[Length(exactly: 10, exactMessage: 'company.rnokpp_length')]
     #[Column(length: 10, unique: true, nullable: true)]
-    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_COLLECTION_COMPANY])]
+    #[Groups([CompanyProfile::GET_COLLECTION_COMPANY, CompanyProfile::GET_ITEM_COMPANY, CompanyProfile::POST_COLLECTION_COMPANY, CompanyProfile::PATCH_ITEM_COMPANY])]
     private ?string $rnokpp = null;
 
     /**

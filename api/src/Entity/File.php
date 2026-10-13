@@ -31,7 +31,19 @@ use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Constraints\NotNull;
 use Symfony\Component\Validator\Constraints\PositiveOrZero;
 
-#[ApiResource(operations: [new Get(security: "is_granted('" .User::ROLE_ADMIN. "')"), new GetCollection(security: "is_granted('" .User::ROLE_ADMIN. "')"),], security: "is_granted('" .User::ROLE_ADMIN. "')")]
+#[ApiResource(
+    operations: [
+        new Get(
+            normalizationContext: ['groups' => [File::GET_ITEM_FILE]],
+            security: "is_granted('" . User::ROLE_ADMIN . "')"
+        ),
+        new GetCollection(
+            normalizationContext: ['groups' => [File::GET_COLLECTION_FILE]],
+            security: "is_granted('" . User::ROLE_ADMIN . "')"
+        ),
+    ],
+    security: "is_granted('" . User::ROLE_ADMIN . "')"
+)]
 #[Entity(repositoryClass: FileRepository::class)]
 #[SoftDeleteable(fieldName: 'deletedAt', timeAware: false, hardDelete: false)]
 class File
@@ -42,7 +54,8 @@ class File
     public const string GET_COLLECTION_FILE = 'get:collection:file';
     public const string GET_ITEM_FILE = 'get:item:file';
     public const string POST_COLLECTION_FILE = 'post:collection:file';
-    public const string PATCH_COLLECTION_FILE = 'patch:item:file';
+    public const string PATCH_ITEM_FILE = 'patch:item:file';
+    public const string PATCH_COLLECTION_FILE = self::PATCH_ITEM_FILE;
 
     /**
      * @var Uuid|null
@@ -76,7 +89,7 @@ class File
      */
     #[NotBlank]
     #[Column(length: 255)]
-    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_COLLECTION_FILE])]
+    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_ITEM_FILE])]
     private ?string $originalName = null;
 
     /**
@@ -84,7 +97,7 @@ class File
      */
     #[NotBlank]
     #[Column(enumType: MimeType::class)]
-    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_COLLECTION_FILE])]
+    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_ITEM_FILE])]
     private ?MimeType $mimeType = null;
 
     /**
@@ -94,7 +107,7 @@ class File
     #[PositiveOrZero]
     #[LessThanOrEqual(value: 5242880, message: 'validator.file.size_exceeded')]
     #[Column]
-    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_COLLECTION_FILE])]
+    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_ITEM_FILE])]
     private ?int $size = null;
 
     /**
@@ -102,7 +115,7 @@ class File
      */
     #[NotNull]
     #[Column(enumType: FileType::class)]
-    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_COLLECTION_FILE])]
+    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_ITEM_FILE])]
     private ?FileType $type = null;
 
     /**
@@ -116,7 +129,7 @@ class File
      * @var File|null
      */
     #[ManyToOne(targetEntity: self::class, inversedBy: 'files')]
-    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_COLLECTION_FILE])]
+    #[Groups([File::GET_ITEM_FILE, File::GET_COLLECTION_FILE, File::POST_COLLECTION_FILE, File::PATCH_ITEM_FILE])]
     #[JoinColumn(onDelete: 'CASCADE')]
     private ?self $parent = null;
 
@@ -140,7 +153,7 @@ class File
      * @var array
      */
     #[Column]
-    #[Groups([File::GET_ITEM_FILE, File::POST_COLLECTION_FILE, File::PATCH_COLLECTION_FILE])]
+    #[Groups([File::GET_ITEM_FILE, File::POST_COLLECTION_FILE, File::PATCH_ITEM_FILE])]
     private array $metadata = [];
 
     /**

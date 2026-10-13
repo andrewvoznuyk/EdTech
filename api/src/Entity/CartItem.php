@@ -2,34 +2,45 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiResource;
 use App\Repository\CartItemRepository;
+use DateTimeImmutable;
+use Doctrine\ORM\EntityNotFoundException;
 use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\CustomIdGenerator;
 use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\GeneratedValue;
 use Doctrine\ORM\Mapping\Id;
 use Doctrine\ORM\Mapping\JoinColumn;
 use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping\UniqueConstraint;
-use Gedmo\Mapping\Annotation\SoftDeleteable;
-use App\Entity\Trait\SoftDeleteableEntity;
 use App\Entity\Trait\TimestampableEntity;
-#[ApiResource]
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\Constraints\LessThanOrEqual;
+use Symfony\Component\Validator\Constraints\NotNull;
+use Symfony\Component\Validator\Constraints\Positive;
+
 #[Entity(repositoryClass: CartItemRepository::class)]
 #[UniqueConstraint(name: 'uniq_cart_product', columns: ['cart_id', 'product_id'])]
-#[SoftDeleteable(fieldName: 'deletedAt', timeAware: false, hardDelete: false)]
 class CartItem
 {
     use TimestampableEntity;
-    use SoftDeleteableEntity;
+
+    public const string GET_COLLECTION_CART_ITEM = 'get:collection:cart_item';
+    public const string GET_ITEM_CART_ITEM = 'get:item:cart_item';
+    public const string POST_COLLECTION_CART_ITEM = 'post:collection:cart_item';
+    public const string PATCH_ITEM_CART_ITEM = 'patch:item:cart_item';
 
     /**
-     * @var int|null
+     * @var Uuid|null
      */
     #[Id]
-    #[GeneratedValue]
-    #[Column]
-    private ?int $id = null;
+    #[Column(type: 'uuid', unique: true)]
+    #[GeneratedValue(strategy: 'CUSTOM')]
+    #[CustomIdGenerator(class: 'doctrine.uuid_generator')]
+    #[Groups([self::GET_ITEM_CART_ITEM, self::GET_COLLECTION_CART_ITEM])]
+    private ?Uuid $id = null;
 
     /**
      * @var Cart|null
@@ -43,18 +54,44 @@ class CartItem
      */
     #[ManyToOne(inversedBy: 'cartItems')]
     #[JoinColumn(name: 'product_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[Groups([self::GET_ITEM_CART_ITEM, self::GET_COLLECTION_CART_ITEM, self::POST_COLLECTION_CART_ITEM])]
+    #[NotNull(groups: [self::POST_COLLECTION_CART_ITEM])]
     private ?Product $product = null;
 
     /**
      * @var int|null
      */
     #[Column]
-    private ?int $quantity = null;
+    #[Groups([self::GET_ITEM_CART_ITEM, self::GET_COLLECTION_CART_ITEM, self::POST_COLLECTION_CART_ITEM, self::PATCH_ITEM_CART_ITEM])]
+    #[NotNull(groups: [self::PATCH_ITEM_CART_ITEM])]
+    #[Positive(groups: [self::POST_COLLECTION_CART_ITEM, self::PATCH_ITEM_CART_ITEM])]
+    #[LessThanOrEqual(value: 99, groups: [self::POST_COLLECTION_CART_ITEM, self::PATCH_ITEM_CART_ITEM])]
+    private ?int $quantity = 1;
 
     /**
-     * @return int|null
+     * @return string
      */
-    public function getId(): ?int
+    #[Groups([self::GET_ITEM_CART_ITEM, self::GET_COLLECTION_CART_ITEM])]
+    public function getTotalPrice(): string
+    {
+        try {
+            if (!$this->product || $this->product->isDeleted()) {
+                return '0.00';
+            }
+            $price = $this->product->getPrice() ?? '0.00';
+        } catch (EntityNotFoundException) {
+            return '0.00';
+        }
+
+        $qty = $this->quantity ?? 1;
+
+        return number_format((float) $price * $qty, 2, '.', '');
+    }
+
+    /**
+     * @return Uuid
+     */
+    public function getId(): Uuid
     {
         return $this->id;
     }
@@ -98,6 +135,19 @@ class CartItem
     }
 
     /**
+     * @param Product|null $product
+     * @return $this
+     */
+    #[SerializedName('productId')]
+    #[Groups([self::POST_COLLECTION_CART_ITEM])]
+    public function setProductId(?Product $product): static
+    {
+        $this->product = $product;
+
+        return $this;
+    }
+
+    /**
      * @return int|null
      */
     public function getQuantity(): ?int
@@ -114,5 +164,23 @@ class CartItem
         $this->quantity = $quantity;
 
         return $this;
+    }
+
+    /**
+     * @return DateTimeImmutable|null
+     */
+    #[Groups([self::GET_ITEM_CART_ITEM, self::GET_COLLECTION_CART_ITEM])]
+    public function getCreatedAt(): ?DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    /**
+     * @return DateTimeImmutable|null
+     */
+    #[Groups([self::GET_ITEM_CART_ITEM, self::GET_COLLECTION_CART_ITEM])]
+    public function getUpdatedAt(): ?DateTimeImmutable
+    {
+        return $this->updatedAt;
     }
 }

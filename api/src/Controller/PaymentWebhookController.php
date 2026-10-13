@@ -2,44 +2,39 @@
 
 namespace App\Controller;
 
-use App\Entity\Order;
-use App\Event\OrderPaidEvent;
+
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class PaymentWebhookController extends AbstractController
 {
-    #[Route('/webhook/payment-success', name: 'payment_webhook', methods: ['POST'])]
-    public function handle(Request $request, EntityManagerInterface $em, EventDispatcherInterface $eventDispatcher): Response {
-        $payload = json_decode($request->getContent(), true);
+    /**
+     * @param EntityManagerInterface $entityManager
+     * @param EventDispatcherInterface $eventDispatcher
+     * @param SerializerInterface $serializer
+     */
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly SerializerInterface $serializer
+    ) {
+    }
 
-
-        $orderId = $payload['order_id']?? null;
-
-        if (!$orderId) {
-            return new Response('Invalid payload', Response::HTTP_BAD_REQUEST);
-        }
-
-        $order = $em->getRepository(Order::class)->find($orderId);
-
-        if (!$order) {
-            return new Response('Order not found', Response::HTTP_NOT_FOUND);
-        }
-
-        if ($order->getStatus() === 'paid') {
-            return new Response('Already processed', Response::HTTP_OK);
-        }
-
-        $order->setStatus('paid');
-        $em->flush();
-
-        $event = new OrderPaidEvent($order);
-        $eventDispatcher->dispatch($event);
-
-        return new Response('Webhook handled successfully', Response::HTTP_OK);
+    /**
+     * @param Request $request
+     * @param int|null $id
+     * @return Response
+     */
+    #[Route('/api/webhook/payment-success/{id}', name: 'payment_webhook_by_id', methods: ['POST'])]
+    #[Route('/api/webhook/payment-success', name: 'payment_webhook', methods: ['POST'])]
+    public function handle(Request $request, ?int $id = null): Response
+    {
+        return new JsonResponse([]);
     }
 }

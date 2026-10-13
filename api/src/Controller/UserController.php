@@ -3,7 +3,6 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
 use App\Service\Email\EmailSenderService;
 use App\Service\Email\Strategy\RestoreAccountEmail;
 use App\Service\User\TokenUserResolver;
@@ -19,13 +18,11 @@ use Symfony\Component\Routing\Attribute\Route;
 class UserController extends AbstractController
 {
     /**
-     * @param UserRepository $userRepository
      * @param EmailSenderService $emailService
      * @param EntityManagerInterface $entityManager
      * @param TokenUserResolver $tokenUserResolver
      */
     public function __construct(
-        private readonly UserRepository $userRepository,
         private readonly EmailSenderService $emailService,
         private readonly EntityManagerInterface $entityManager,
         private readonly TokenUserResolver $tokenUserResolver
@@ -42,7 +39,7 @@ class UserController extends AbstractController
 
         $this->entityManager->getFilters()->disable('softdeleteable');
 
-        $user = $this->userRepository->findOneBy(['email' => $userDto->getEmail()]);
+        $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $userDto->getEmail()]);
 
         if ($user && $user->getDeletedAt() !== null) {
             $this->emailService->setStrategy(new RestoreAccountEmail());
