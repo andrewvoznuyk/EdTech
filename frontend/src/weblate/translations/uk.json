@@ -1,0 +1,28 @@
+{
+  "common": {
+    "brand": "EdTech",
+    "platform": "EdTech платформа",
+    "language": "Мова",
+    "loading": "Завантаження..."
+  },
+  "auth": {
+    "login_tab": "Увійти",
+    "register_tab": "Зареєструватися",
+    "email_label": "Пошта",
+    "email_placeholder": "name@example.com",
+    "password_label": "Пароль",
+    "password_placeholder": "••••••••",
+    "confirm_password_label": "Підтвердіть пароль",
+    "first_name_label": "Ім'я",
+    "first_name_placeholder": "Андрій",
+    "last_name_label": "Прізвище",
+    "last_name_placeholder": "Вознюк",
+    "forgot_password": "Забули пароль?",
+    "login_button": "Увійти",
+    "register_button": "Створити акаунт",
+    "no_account": "У вас ще немає акаунту?",
+    "have_account": "У вас вже є акаунт?",
+    "to_register": "Зареєструватися",
+    "to_login": "Увійти"
+  }
+}

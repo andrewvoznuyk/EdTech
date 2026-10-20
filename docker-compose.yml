@@ -13,6 +13,58 @@ services:
       - public_bundles:/var/www/api/public/bundles
     environment:
       APP_ENV: ${APP_ENV}
+      SERVER_NAME: ":80"
+      # Worker mode is for production. In dev, classic mode reloads code/routes immediately:
+      # FRANKENPHP_CONFIG: "worker ./public/index.php"
+    depends_on:
+      - mysql
+      - rabbitmq
+    networks:
+      - ${PROJECT_NAME}
+
+  messenger-worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
+    container_name: ${PROJECT_NAME}-messenger-worker
+    restart: unless-stopped
+    stop_grace_period: 30s
+    command: php bin/console messenger:consume async --time-limit=3600 --memory-limit=256M -vv
+    volumes:
+      - ./api:/var/www/api
+    environment:
+      APP_ENV: ${APP_ENV}
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_started
+      mysql:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - ${PROJECT_NAME}
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: ${PROJECT_NAME}-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - ${PROJECT_NAME}
 
@@ -21,9 +73,9 @@ services:
       context: ./frontend
       dockerfile: ../docker/frontend/Dockerfile
 
-    command: npm run dev -- --host
+    command: npm run dev
     ports:
-      - "3000:5173"
+      - "3000:3000"
     stdin_open: true
     tty: true
     container_name: ${PROJECT_NAME}-frontend
@@ -71,6 +123,7 @@ services:
       - "80:80"
       - "443:443"
       - "8443:8443"
+      - "15671:15671"
     volumes:
       - ${API_DIRECTORY}:/var/www/project/api
       - ${FRONTEND_DIRECTORY}:/var/www/project/frontend
@@ -93,3 +146,4 @@ volumes:
   mysql:
   vendor_data:
   public_bundles:
+  rabbitmq_data:

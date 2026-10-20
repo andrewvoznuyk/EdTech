@@ -1,7 +1,0 @@
-services:
-  App\Service\Validator:
-    autowire: true
-    autoconfigure: true
-
-  App\Service\Interface\IBValidatorInterface:
-    alias: App\Service\Validator
