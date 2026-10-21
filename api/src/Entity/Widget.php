@@ -49,14 +49,14 @@ class Widget extends Asset
     /**
      * @var int|null
      */
-    #[Column]
+    #[Column(nullable: true)]
     #[Groups([Asset::GET_COLLECTION_ASSET, Asset::GET_ITEM_ASSET, Asset::GET_COLLECTION_ASSET_ADMIN, self::GET_COLLECTION_WIDGET, self::GET_ITEM_WIDGET, self::PATCH_ITEM_WIDGET])]
     private ?int $rate = null;
 
     /**
      * @var int|null
      */
-    #[Column]
+    #[Column(nullable: true)]
     #[Groups([Asset::GET_COLLECTION_ASSET, Asset::GET_ITEM_ASSET, Asset::GET_COLLECTION_ASSET_ADMIN, self::GET_COLLECTION_WIDGET, self::GET_ITEM_WIDGET, self::PATCH_ITEM_WIDGET])]
     private ?int $view = null;
 

@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
 use App\Service\Interface\UserAwareInterface;
+use App\Service\Money\MoneyService;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -21,6 +22,7 @@ use Doctrine\ORM\Mapping\Version;
 use Gedmo\Mapping\Annotation\SoftDeleteable;
 use App\Entity\Trait\SoftDeleteableEntity;
 use App\Entity\Trait\TimestampableEntity;
+use Money\Money;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints\NotNull;
@@ -94,9 +96,9 @@ class Order implements UserAwareInterface
     }
 
     /**
-     * @return Uuid
+     * @return Uuid|null
      */
-    public function getId(): Uuid
+    public function getId(): ?Uuid
     {
         return $this->id;
     }
@@ -167,17 +169,47 @@ class Order implements UserAwareInterface
     }
 
     /**
+     * @param string $currency
+     * @return Money
+     */
+    public function getTotalMoney(string $currency = MoneyService::DEFAULT_CURRENCY): Money
+    {
+        return MoneyService::toMoney($this->totalPrice, $currency);
+    }
+
+    /**
+     * @param string $currency
      * @return $this
      */
-    public function recalculateTotalPrice(): static
+    public function recalculateTotalPrice(string $currency = MoneyService::DEFAULT_CURRENCY): static
     {
-        $total = '0.00';
-        foreach ($this->orderItems as $item) {
-            $total = bcadd($total, $item->getTotalPrice() ?? '0.00', 2);
+        $totalMoney = MoneyService::toMoney('0.00', $currency);
+        foreach ($this->orderItems as $orderItem) {
+            $totalMoney = MoneyService::add($totalMoney, $orderItem->getTotalMoney($currency));
         }
-        $this->totalPrice = $total;
+        $this->totalPrice = MoneyService::format($totalMoney);
 
         return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getStatusValue(): string
+    {
+        return $this->status->value;
+    }
+
+    /**
+     * @param string|OrderStatus $status
+     * @return void
+     */
+    public function setStatusValue(string|OrderStatus $status): void
+    {
+        if (is_string($status)) {
+            $status = OrderStatus::from($status);
+        }
+        $this->status = $status;
     }
 
     /**

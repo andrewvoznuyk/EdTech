@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\CartItemRepository;
+use App\Service\Money\MoneyService;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityNotFoundException;
 use Doctrine\ORM\Mapping\Column;
@@ -14,6 +15,7 @@ use Doctrine\ORM\Mapping\JoinColumn;
 use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping\UniqueConstraint;
 use App\Entity\Trait\TimestampableEntity;
+use Money\Money;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Uid\Uuid;
@@ -69,29 +71,39 @@ class CartItem
     private ?int $quantity = 1;
 
     /**
+     * @param string $currency
+     * @return Money
+     */
+    public function getTotalMoney(string $currency = MoneyService::DEFAULT_CURRENCY): Money
+    {
+        try {
+            if (!$this->product || $this->product->isDeleted()) {
+                return MoneyService::toMoney('0.00', $currency);
+            }
+            $price = $this->product->getPrice();
+        } catch (EntityNotFoundException) {
+            return MoneyService::toMoney('0.00', $currency);
+        }
+
+        $money = MoneyService::toMoney($price, $currency);
+        $itemQuantity = $this->quantity ?? 1;
+
+        return MoneyService::multiply($money, $itemQuantity);
+    }
+
+    /**
      * @return string
      */
     #[Groups([self::GET_ITEM_CART_ITEM, self::GET_COLLECTION_CART_ITEM])]
     public function getTotalPrice(): string
     {
-        try {
-            if (!$this->product || $this->product->isDeleted()) {
-                return '0.00';
-            }
-            $price = $this->product->getPrice() ?? '0.00';
-        } catch (EntityNotFoundException) {
-            return '0.00';
-        }
-
-        $qty = $this->quantity ?? 1;
-
-        return number_format((float) $price * $qty, 2, '.', '');
+        return MoneyService::format($this->getTotalMoney());
     }
 
     /**
-     * @return Uuid
+     * @return Uuid|null
      */
-    public function getId(): Uuid
+    public function getId(): ?Uuid
     {
         return $this->id;
     }

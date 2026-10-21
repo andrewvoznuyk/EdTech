@@ -12,8 +12,10 @@ use App\Repository\OrderRepository;
 use App\Service\EntityService\Cart\CartServiceInterface;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Workflow\WorkflowInterface;
 
 /**
  * @implements OrderPlacementServiceInterface
@@ -24,11 +26,14 @@ final readonly class OrderPlacementService implements OrderPlacementServiceInter
      * @param EntityManagerInterface $entityManager
      * @param OrderRepository $orderRepository
      * @param CartServiceInterface $cartService
+     * @param WorkflowInterface $orderLifecycleStateMachine
      */
     public function __construct(
         private EntityManagerInterface $entityManager,
         private OrderRepository $orderRepository,
         private CartServiceInterface $cartService,
+        #[Target('order_lifecycle')]
+        private WorkflowInterface $orderLifecycleStateMachine,
     ) {
     }
 
@@ -128,14 +133,21 @@ final readonly class OrderPlacementService implements OrderPlacementServiceInter
             throw new AccessDeniedHttpException('Access denied.');
         }
 
-        if ($order->getStatus() !== OrderStatus::PENDING) {
-            throw new BadRequestHttpException('Only pending orders can be cancelled.');
-        }
+        return $this->entityManager->wrapInTransaction(function () use ($order): Order {
+            if ($this->entityManager->contains($order)) {
+                $this->entityManager->refresh($order);
+                $this->entityManager->lock($order, LockMode::PESSIMISTIC_WRITE);
+            }
 
-        $order->setStatus(OrderStatus::CANCELLED);
-        $this->entityManager->flush();
+            if ($order->getStatus() !== OrderStatus::PENDING || !$this->orderLifecycleStateMachine->can($order, 'cancel')) {
+                throw new BadRequestHttpException('Only pending orders can be cancelled.');
+            }
 
-        return $order;
+            $this->orderLifecycleStateMachine->apply($order, 'cancel');
+            $this->entityManager->flush();
+
+            return $order;
+        });
     }
 
     /**
@@ -146,19 +158,36 @@ final readonly class OrderPlacementService implements OrderPlacementServiceInter
      */
     public function updateStatus(Order $order, OrderStatus $status): Order
     {
-        $currentStatus = $order->getStatus();
-        if ($currentStatus !== null && !$currentStatus->canTransitionTo($status)) {
-            throw new BadRequestHttpException(sprintf(
-                'Cannot transition order status from "%s" to "%s".',
-                $currentStatus->value,
-                $status->value,
-            ));
-        }
+        return $this->entityManager->wrapInTransaction(function () use ($order, $status): Order {
+            if ($this->entityManager->contains($order)) {
+                $this->entityManager->refresh($order);
+                $this->entityManager->lock($order, LockMode::PESSIMISTIC_WRITE);
+            }
 
-        $order->setStatus($status);
-        $this->entityManager->flush();
+            $currentStatus = $order->getStatus();
+            if ($currentStatus === $status) {
+                return $order;
+            }
 
-        return $order;
+            $transition = match ($status) {
+                OrderStatus::PAID => 'pay',
+                OrderStatus::CANCELLED => 'cancel',
+                default => null,
+            };
+
+            if ($transition === null || !$this->orderLifecycleStateMachine->can($order, $transition)) {
+                throw new BadRequestHttpException(sprintf(
+                    'Cannot transition order status from "%s" to "%s".',
+                    $currentStatus->value,
+                    $status->value,
+                ));
+            }
+
+            $this->orderLifecycleStateMachine->apply($order, $transition);
+            $this->entityManager->flush();
+
+            return $order;
+        });
     }
 
     /**

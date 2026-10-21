@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\CartRepository;
 use App\Service\Interface\UserAwareInterface;
+use App\Service\Money\MoneyService;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -15,6 +16,7 @@ use Doctrine\ORM\Mapping\Id;
 use Doctrine\ORM\Mapping\OneToMany;
 use Doctrine\ORM\Mapping\OneToOne;
 use App\Entity\Trait\TimestampableEntity;
+use Money\Money;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
@@ -53,17 +55,26 @@ class Cart implements UserAwareInterface
     private Collection $cartItems;
 
     /**
+     * @param string $currency
+     * @return Money
+     */
+    public function getTotalMoney(string $currency = MoneyService::DEFAULT_CURRENCY): Money
+    {
+        $totalMoney = MoneyService::toMoney('0.00', $currency);
+        foreach ($this->cartItems as $cartItem) {
+            $totalMoney = MoneyService::add($totalMoney, $cartItem->getTotalMoney($currency));
+        }
+
+        return $totalMoney;
+    }
+
+    /**
      * @return string
      */
     #[Groups([self::GET_ITEM_CART, self::GET_COLLECTION_CART])]
     public function getTotalPrice(): string
     {
-        $total = 0.00;
-        foreach ($this->cartItems as $item) {
-            $total += (float) $item->getTotalPrice();
-        }
-
-        return number_format($total, 2, '.', '');
+        return MoneyService::format($this->getTotalMoney());
     }
 
     /**
@@ -106,9 +117,9 @@ class Cart implements UserAwareInterface
     }
 
     /**
-     * @return Uuid
+     * @return Uuid|null
      */
-    public function getId(): Uuid
+    public function getId(): ?Uuid
     {
         return $this->id;
     }

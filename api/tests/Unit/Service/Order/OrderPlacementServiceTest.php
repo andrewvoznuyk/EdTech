@@ -20,6 +20,8 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Workflow\Marking;
+use Symfony\Component\Workflow\WorkflowInterface;
 
 class OrderPlacementServiceTest extends TestCase
 {
@@ -39,6 +41,11 @@ class OrderPlacementServiceTest extends TestCase
     private CartServiceInterface&MockObject $cartService;
 
     /**
+     * @var WorkflowInterface&MockObject
+     */
+    private WorkflowInterface&MockObject $orderLifecycleStateMachine;
+
+    /**
      * @var OrderPlacementService
      */
     private OrderPlacementService $orderPlacementService;
@@ -54,11 +61,13 @@ class OrderPlacementServiceTest extends TestCase
 
         $this->orderRepository = $this->createMock(OrderRepository::class);
         $this->cartService = $this->createMock(CartServiceInterface::class);
+        $this->orderLifecycleStateMachine = $this->createMock(WorkflowInterface::class);
 
         $this->orderPlacementService = new OrderPlacementService(
             $this->entityManager,
             $this->orderRepository,
-            $this->cartService
+            $this->cartService,
+            $this->orderLifecycleStateMachine
         );
     }
 
@@ -223,6 +232,19 @@ class OrderPlacementServiceTest extends TestCase
         $order->setUser($owner);
         $order->setStatus(OrderStatus::PENDING);
 
+        $this->orderLifecycleStateMachine->expects($this->once())
+            ->method('can')
+            ->with($order, 'cancel')
+            ->willReturn(true);
+
+        $this->orderLifecycleStateMachine->expects($this->once())
+            ->method('apply')
+            ->with($order, 'cancel')
+            ->willReturnCallback(function (Order $order) {
+                $order->setStatus(OrderStatus::CANCELLED);
+                return new Marking(['cancelled' => 1]);
+            });
+
         $this->entityManager->expects($this->once())
             ->method('flush');
 
@@ -271,6 +293,19 @@ class OrderPlacementServiceTest extends TestCase
         $order = new Order();
         $order->setStatus(OrderStatus::PENDING);
 
+        $this->orderLifecycleStateMachine->expects($this->once())
+            ->method('can')
+            ->with($order, 'pay')
+            ->willReturn(true);
+
+        $this->orderLifecycleStateMachine->expects($this->once())
+            ->method('apply')
+            ->with($order, 'pay')
+            ->willReturnCallback(function (Order $order) {
+                $order->setStatus(OrderStatus::PAID);
+                return new Marking(['paid' => 1]);
+            });
+
         $this->entityManager->expects($this->once())
             ->method('flush');
 
@@ -305,6 +340,11 @@ class OrderPlacementServiceTest extends TestCase
         $order = new Order();
         $order->setStatus(OrderStatus::CANCELLED);
 
+        $this->orderLifecycleStateMachine->expects($this->once())
+            ->method('can')
+            ->with($order, 'pay')
+            ->willReturn(false);
+
         $this->expectException(BadRequestHttpException::class);
         $this->expectExceptionMessage('Cannot transition order status from "cancelled" to "paid".');
 
@@ -323,5 +363,22 @@ class OrderPlacementServiceTest extends TestCase
         $this->expectExceptionMessage('Cannot delete paid orders.');
 
         $this->orderPlacementService->deleteOrder($order);
+    }
+
+    /**
+     * @return void
+     */
+    public function testUpdateStatusIsIdempotentWhenAlreadyInTargetStatus(): void
+    {
+        $order = new Order();
+        $order->setStatus(OrderStatus::PAID);
+
+        $this->orderLifecycleStateMachine->expects($this->never())->method('apply');
+        $this->entityManager->expects($this->never())->method('flush');
+
+        $result = $this->orderPlacementService->updateStatus($order, OrderStatus::PAID);
+
+        $this->assertSame($order, $result);
+        $this->assertSame(OrderStatus::PAID, $result->getStatus());
     }
 }

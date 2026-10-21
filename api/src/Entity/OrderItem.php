@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\OrderItemRepository;
+use App\Service\Money\MoneyService;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping\Column;
@@ -15,6 +16,7 @@ use Doctrine\ORM\Mapping\ManyToOne;
 use Gedmo\Mapping\Annotation\SoftDeleteable;
 use App\Entity\Trait\SoftDeleteableEntity;
 use App\Entity\Trait\TimestampableEntity;
+use Money\Money;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Uid\Uuid;
@@ -94,9 +96,9 @@ class OrderItem
     private ?string $totalPrice = null;
 
     /**
-     * @return Uuid
+     * @return Uuid|null
      */
-    public function getId(): Uuid
+    public function getId(): ?Uuid
     {
         return $this->id;
     }
@@ -252,13 +254,33 @@ class OrderItem
     }
 
     /**
+     * @param string $currency
+     * @return Money
+     */
+    public function getUnitPriceMoney(string $currency = MoneyService::DEFAULT_CURRENCY): Money
+    {
+        return MoneyService::toMoney($this->unitPrice, $currency);
+    }
+
+    /**
+     * @param string $currency
+     * @return Money
+     */
+    public function getTotalMoney(string $currency = MoneyService::DEFAULT_CURRENCY): Money
+    {
+        return MoneyService::toMoney($this->totalPrice, $currency);
+    }
+
+    /**
      * @return $this
      */
     public function calculateTotalPrice(): static
     {
         if ($this->product && $this->quantity) {
             $this->unitPrice = $this->product->getPrice();
-            $this->totalPrice = bcmul($this->unitPrice ?? '0.00', (string) $this->quantity, 2);
+            $unitMoney = MoneyService::toMoney($this->unitPrice);
+            $totalMoney = MoneyService::multiply($unitMoney, $this->quantity);
+            $this->totalPrice = MoneyService::format($totalMoney);
         }
 
         return $this;
